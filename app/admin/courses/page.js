@@ -40,7 +40,7 @@ export default function AdminCoursesPage() {
 
         setAdminEmail(user.email || "");
 
-        const courseList = await getAdminCourses();
+        const courseList = await getAdminCourses(await user.getIdToken());
 
         if (!cancelled) {
           setCourses(courseList);
@@ -79,7 +79,7 @@ export default function AdminCoursesPage() {
     if (!confirmed) return;
 
     try {
-      const result = await deleteCourse(courseId);
+      const result = await deleteCourse(await auth.currentUser?.getIdToken(), courseId);
 
       setCourses((prevCourses) =>
         prevCourses.filter((course) => course.id !== courseId)

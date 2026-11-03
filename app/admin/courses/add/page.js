@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { auth } from "../../../../lib/firebase";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createCourse } from "../../../actions/courseActions";
@@ -19,7 +20,7 @@ export default function AddCoursePage() {
 
     try {
       const form = new FormData(event.currentTarget);
-      const result = await createCourse(form);
+      const result = await createCourse(await auth.currentUser?.getIdToken(), form);
 
       setSuccessMessage(result.message);
 

@@ -40,7 +40,7 @@ export default function AdminUsersPage() {
         setCurrentUserId(currentUser.uid);
 
         // Admin data is loaded through a Server Action.
-        const usersList = await getAdminUsers();
+        const usersList = await getAdminUsers(await currentUser.getIdToken());
 
         setUsers(usersList);
       } catch (err) {
@@ -81,7 +81,7 @@ export default function AdminUsersPage() {
     if (!confirmed) return;
 
     try {
-      const result = await updateUserRole(userId, newRole);
+      const result = await updateUserRole(await auth.currentUser?.getIdToken(), userId, newRole);
 
       setUsers((prevUsers) =>
         prevUsers.map((user) =>

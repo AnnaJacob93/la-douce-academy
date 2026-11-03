@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { auth } from "../../../../../lib/firebase";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getCourseById, updateCourse } from "../../../../actions/courseActions";
@@ -91,7 +92,7 @@ export default function EditCoursePage() {
 
     try {
       const form = new FormData(event.currentTarget);
-      const result = await updateCourse(courseId, form);
+      const result = await updateCourse(await auth.currentUser?.getIdToken(), courseId, form);
 
       setSuccessMessage(result.message);
 

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { auth, db } from "../../../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { getAllFeedback } from "../../actions/courseActions";
+import { getAdminFeedback } from "../../actions/courseActions";
 
 export default function AdminFeedbackPage() {
   const [feedbackList, setFeedbackList] = useState([]);
@@ -50,7 +50,7 @@ export default function AdminFeedbackPage() {
         }
 
         // Feedback data is now loaded through a Server Action.
-        const feedbackItems = await getAllFeedback();
+        const feedbackItems = await getAdminFeedback(await currentUser.getIdToken());
 
         setFeedbackList(feedbackItems);
       } catch (err) {

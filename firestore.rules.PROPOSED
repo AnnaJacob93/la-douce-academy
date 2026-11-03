@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    match /courses/{courseId} {
+      allow read: if true;
+      allow write: if false; // Server Actions with Admin SDK only
+    }
+    match /enrollments/{enrollmentId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow write: if false; // Server Actions with Admin SDK only
+    }
+    match /feedback/{feedbackId} {
+      allow read: if false; // Public reviews served as sanitized data by getAllFeedback Server Action
+      allow write: if false; // Server Actions with Admin SDK only
+    }
+    match /users/{userId} {
+      allow create: if signedIn() && request.auth.uid == userId
+        && request.resource.data.role == 'learner'
+        && request.resource.data.keys().hasOnly(['fullName','email','age','address','phone','role','createdAt']);
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fullName','age','address','phone']));
+      allow delete: if isAdmin();
+    }
+  }
+}

@@ -4,6 +4,17 @@ import { storage } from "../../lib/firebase";
 import { adminAuth, adminDb } from "../../lib/firebaseAdmin";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
+/* ---------- Server-side authorization ---------- */
+async function requireAdmin(token) {
+  if (!token || typeof token !== "string") throw new Error("Authentication required.");
+  const identity = await adminAuth.verifyIdToken(token, true);
+  const profile = await adminDb.collection("users").doc(identity.uid).get();
+  if (!profile.exists || profile.data().role !== "admin") {
+    throw new Error("Administrator access required.");
+  }
+  return identity;
+}
+
 /* ---------- Helpers ---------- */
 
 function serializeDate(value) {
@@ -66,6 +77,22 @@ function serializeFeedback(docItem) {
 export async function getAllFeedback() {
   const snapshot = await adminDb.collection("feedback").get();
 
+  return snapshot.docs.map((docItem) => {
+    const data = docItem.data();
+    return {
+      id: docItem.id,
+      courseId: data.courseId || "",
+      courseName: data.courseName || "",
+      rating: data.rating || 0,
+      comment: data.comment || "",
+      createdAt: serializeDate(data.createdAt),
+    };
+  });
+}
+
+export async function getAdminFeedback(token) {
+  await requireAdmin(token);
+  const snapshot = await adminDb.collection("feedback").get();
   return snapshot.docs.map((docItem) => serializeFeedback(docItem));
 }
 
@@ -100,7 +127,8 @@ export async function getFilteredCourses(filters = {}) {
   return courses;
 }
 
-export async function getAdminCourses() {
+export async function getAdminCourses(token) {
+  await requireAdmin(token);
   const snapshot = await adminDb.collection("courses").get();
 
   return snapshot.docs.map((docItem) => serializeCourse(docItem));
@@ -191,7 +219,8 @@ function getCourseDataFromForm(formData, pdfUrl) {
   };
 }
 
-export async function createCourse(formData) {
+export async function createCourse(token, formData) {
+  await requireAdmin(token);
   const pdfUrl = await getPdfUrlFromForm(formData);
   const courseData = getCourseDataFromForm(formData, pdfUrl);
 
@@ -207,7 +236,8 @@ export async function createCourse(formData) {
   };
 }
 
-export async function updateCourse(courseId, formData) {
+export async function updateCourse(token, courseId, formData) {
+  await requireAdmin(token);
   if (!courseId) throw new Error("Missing course ID.");
 
   const courseRef = adminDb.collection("courses").doc(courseId);
@@ -230,7 +260,8 @@ export async function updateCourse(courseId, formData) {
   };
 }
 
-export async function deleteCourse(courseId) {
+export async function deleteCourse(token, courseId) {
+  await requireAdmin(token);
   if (!courseId) throw new Error("Missing course ID.");
 
   const courseRef = adminDb.collection("courses").doc(courseId);
@@ -254,7 +285,8 @@ export async function deleteCourse(courseId) {
 
 /* ---------- Enrollments ---------- */
 
-export async function getAdminEnrollments() {
+export async function getAdminEnrollments(token) {
+  await requireAdmin(token);
   const snapshot = await adminDb.collection("enrollments").get();
 
   return snapshot.docs.map((docItem) => serializeEnrollment(docItem));
@@ -418,7 +450,8 @@ export async function withdrawPendingEnrollment(token, enrollmentId) {
   };
 }
 
-export async function removeLearnerFromCourse(enrollmentId, reason) {
+export async function removeLearnerFromCourse(token, enrollmentId, reason) {
+  await requireAdmin(token);
   if (!enrollmentId || !reason || !reason.trim()) {
     throw new Error("Removal reason is required.");
   }
@@ -573,17 +606,22 @@ export async function submitFeedback(token, courseId, courseName, rating, commen
 
 /* ---------- Users ---------- */
 
-export async function getAdminUsers() {
+export async function getAdminUsers(token) {
+  await requireAdmin(token);
   const snapshot = await adminDb.collection("users").get();
 
   return snapshot.docs.map((docItem) => serializeUser(docItem));
 }
 
-export async function updateUserRole(userId, newRole) {
+export async function updateUserRole(token, userId, newRole) {
+  const actingAdmin = await requireAdmin(token);
   if (!userId || !newRole) {
     throw new Error("Missing user role information.");
   }
 
+  if (actingAdmin.uid === userId) {
+    throw new Error("You cannot change your own admin role.");
+  }
   if (newRole !== "admin" && newRole !== "learner") {
     throw new Error("Invalid role selected.");
   }

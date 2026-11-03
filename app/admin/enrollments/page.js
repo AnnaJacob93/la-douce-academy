@@ -41,7 +41,7 @@ export default function AdminEnrollmentsPage() {
         }
 
         // Enrollment data is now loaded through a Server Action.
-        const enrollmentList = await getAdminEnrollments();
+        const enrollmentList = await getAdminEnrollments(await currentUser.getIdToken());
 
         const courseMap = {};
 
@@ -94,7 +94,7 @@ export default function AdminEnrollmentsPage() {
     if (!reason || !reason.trim()) return;
 
     try {
-      const result = await removeLearnerFromCourse(enrollment.id, reason.trim());
+      const result = await removeLearnerFromCourse(await auth.currentUser?.getIdToken(), enrollment.id, reason.trim());
 
       setGroupedCourses((prev) =>
         prev.map((course) => ({
